@@ -1114,6 +1114,14 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _utf8_stdio() -> None:
+    # Windows: stdout bi chuyen huong dung cp1252, in tieng Viet co dau se vo.
+    for s in (sys.stdout, sys.stderr):
+        if hasattr(s, "reconfigure"):
+            s.reconfigure(encoding="utf-8", errors="replace")
+
+
 if __name__ == "__main__":
+    _utf8_stdio()
     _args = build_parser().parse_args()
     sys.exit(_args.func(_args))

@@ -606,7 +606,15 @@ class Handler(BaseHTTPRequestHandler):
             pass
 
 
+def _utf8_stdio() -> None:
+    # Windows: stdout bi chuyen huong dung cp1252, in tieng Viet co dau se vo.
+    for s in (sys.stdout, sys.stderr):
+        if hasattr(s, "reconfigure"):
+            s.reconfigure(encoding="utf-8", errors="replace")
+
+
 def main() -> int:
+    _utf8_stdio()
     cfg = fc.load_config()
     host = cfg["dashboard"].get("host", "127.0.0.1")
     port = int(cfg["dashboard"].get("port", 7788))

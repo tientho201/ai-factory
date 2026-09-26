@@ -161,7 +161,15 @@ def _fmt(n: int) -> str:
     return str(n)
 
 
+def _utf8_stdio() -> None:
+    # Windows: stdout bi chuyen huong dung cp1252, in tieng Viet co dau se vo.
+    for s in (sys.stdout, sys.stderr):
+        if hasattr(s, "reconfigure"):
+            s.reconfigure(encoding="utf-8", errors="replace")
+
+
 if __name__ == "__main__":
+    _utf8_stdio()
     pd = Path(os.environ.get("FLOW_PROJECT_DIR") or os.environ.get("CLAUDE_PROJECT_DIR") or Path.cwd())
     data = collect(pd, only_latest="--all" not in sys.argv)
 
