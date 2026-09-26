@@ -463,8 +463,11 @@ class Handler(BaseHTTPRequestHandler):
     def _state(self) -> dict:
         cfg = fc.load_config()
         cur = fc.get_current()
+        # pending_approvals doc duoc ca khi chua co run nao (vd: mot lenh
+        # Tier 2 roi rac nhu git push thu cong bi tier_guard chan) - phai
+        # tinh truoc, khong duoc gop vao nhanh "chua co run thi tra rong".
         base = {
-            "run_id": None, "tasks": [], "events": [], "pending_approvals": [],
+            "run_id": None, "tasks": [], "events": [], "pending_approvals": fc.pending_approvals(),
             "reports": {}, "auto_mode": cfg["auto_mode"],
             "approve_mode": cfg.get("approve_mode", "queue"),
             "spawn_allowed": ALLOW_SPAWN,
