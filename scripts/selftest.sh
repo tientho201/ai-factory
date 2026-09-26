@@ -120,15 +120,42 @@ check "co commit that" "1" "$(git log --oneline 2>/dev/null | grep -c 'T1:')"
 
 echo
 echo "8. Dashboard"
-PORT=$(python3 -c "import json;print(json.load(open('.flow/config.json'))['dashboard']['port'])")
-python3 "$SRC/scripts/dashboard.py" --no-open >/dev/null 2>&1 &
+# Cong ngau nhien con trong: khong dung may chu cu con song o cong mac dinh.
+PORT=$(python3 -c "import json,socket
+s=socket.socket();s.bind(('127.0.0.1',0));p=s.getsockname()[1];s.close()
+c=json.load(open('.flow/config.json'));c.setdefault('dashboard',{})['port']=p
+json.dump(c,open('.flow/config.json','w'),ensure_ascii=False,indent=2);print(p)")
+# Python tu ghi PID that cua no: tren Git Bash $! la PID cua MSYS/shim,
+# kill vao do khong giet duoc python.exe.
+DPIDF="$LAB/dashboard.pid"
+python3 -c "import os,runpy,sys
+open(sys.argv[1],'w').write(str(os.getpid()))
+sys.argv=[sys.argv[2],'--no-open'];runpy.run_path(sys.argv[0],run_name='__main__')" \
+  "$DPIDF" "$SRC/scripts/dashboard.py" >/dev/null 2>&1 &
 DPID=$!
-sleep 2
+stop_dashboard() {
+  local pid; pid=$(cat "$DPIDF" 2>/dev/null)
+  if [ -n "$pid" ]; then
+    if command -v taskkill >/dev/null 2>&1; then
+      taskkill //F //PID "$pid" >/dev/null 2>&1
+    else
+      kill "$pid" 2>/dev/null
+    fi
+  fi
+  kill "$DPID" 2>/dev/null; wait "$DPID" 2>/dev/null
+  rm -f "$DPIDF"
+}
+trap 'stop_dashboard; rm -rf "$LAB"' EXIT
+for _ in $(seq 1 50); do
+  curl -s -o /dev/null "http://127.0.0.1:$PORT/" 2>/dev/null && break
+  sleep 0.2
+done
 CODE=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/" 2>/dev/null)
 check "trang chinh tra ve 200" "200" "${CODE:-000}"
 NT=$(curl -s "http://127.0.0.1:$PORT/api/state" 2>/dev/null | python3 -c 'import json,sys;print(len(json.load(sys.stdin)["tasks"]))' 2>/dev/null || echo x)
 check "API tra ve du task" "2" "$NT"
-kill $DPID 2>/dev/null; wait $DPID 2>/dev/null
+stop_dashboard
+trap 'rm -rf "$LAB"' EXIT
 
 echo
 echo "9. Tiep tuc run cu"
