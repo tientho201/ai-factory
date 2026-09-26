@@ -174,7 +174,11 @@ Tạo `.env.flow`: `FLOW_SMTP_USER`, `FLOW_SMTP_PASS` (App Password 16 ký tự,
 
 Nếu bạn đã kết nối Gmail connector trong Claude Code thì không cần bước này — bảo Claude dùng connector đó để gửi, sạch hơn và không phải quản App Password.
 
-Telegram: `FLOW_TELEGRAM_TOKEN` + `FLOW_TELEGRAM_CHAT_ID`. Slack/Discord: `FLOW_WEBHOOK_URL`.
+Telegram: `FLOW_TELEGRAM_TOKEN` + `FLOW_TELEGRAM_CHAT_ID`. Slack/Discord: `FLOW_WEBHOOK_URL` (nhiều URL cách nhau dấu phẩy; tự nhận Slack hay Discord theo URL).
+
+Mỗi kênh nhận bản trình bày riêng: Gmail là email HTML, Slack dùng Block Kit, Discord dùng embed có màu, Telegram là tin nhắn định dạng. Thông báo **cần duyệt** ghi đủ để bạn quyết định mà không phải mở máy: dự án, nhánh git, run, task, mức rủi ro, lệnh hoặc file bị chặn, lý do, mô tả task, file trong phạm vi, tiêu chí nghiệm thu, ý tưởng gốc, tiến độ, số phiếu đang chờ, và lệnh duyệt/từ chối. Thông báo **thất bại** kèm kết quả từng bước kiểm tra và đoạn cuối log. Chuỗi giống mật khẩu/token trong lệnh được che trước khi gửi, và cùng một phiếu chỉ báo một lần.
+
+Xem trước mà không gửi: `python3 scripts/notify.py --preview text|html|slack|discord|telegram`. Duyệt từ điện thoại qua tunnel thì đặt `FLOW_DASHBOARD_URL` để link trong thông báo trỏ đúng chỗ.
 
 ## Giới hạn nên biết
 

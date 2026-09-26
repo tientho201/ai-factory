@@ -38,10 +38,9 @@ except Exception as e:  # noqa: BLE001
     sys.exit(0)  # khong chan khi chinh hook bi hong
 
 try:
-    from notify import send as notify_send
+    import notify as nt
 except Exception:  # noqa: BLE001
-    def notify_send(*_a: object, **_k: object) -> bool:
-        return False
+    nt = None  # type: ignore[assignment]
 
 
 PATH_TOOLS = {"Write", "Edit", "NotebookEdit", "MultiEdit"}
@@ -111,6 +110,11 @@ def main() -> int:
     # hay khong - nguoc lai thi chi can lam viec ngoai quy trinh la thoat rao.
     ticket_ok = True
     try:
+        prev = fc.read_approval(task_id)
+    except (SystemExit, OSError):
+        prev = None
+    already_pending = bool(prev) and prev.get("decision") is None and prev.get("what") == what
+    try:
         fc.request_approval(
             task_id,
             what,
@@ -122,18 +126,13 @@ def main() -> int:
         ticket_ok = False
         print(f"[tier_guard] khong lap duoc phieu ({e}) nhung van chan.", file=sys.stderr)
 
-    port = cfg.get("dashboard", {}).get("port", 7788)
-    if ticket_ok and cfg.get("notify", {}).get("on_approval_needed"):
-        notify_send(
-            f"[AI Factory] Chan Tier {tier}: {what[:50]}",
-            f"Agent muon chay mot viec duoc xep Tier {tier} nen he thong da chan lai.\n\n"
-            f"Cong cu: {tool}\n"
-            f"Noi dung: {what}\n"
-            f"Ly do xep tier: {reason}\n"
-            f"Task: {task_id}\n\n"
-            f"Duyet tai: http://127.0.0.1:{port}\n"
-            f"Hoac chay: python scripts/flow.py approve {task_id}\n",
-        )
+    notify_on = cfg.get("notify", {}).get("on_approval_needed")
+    if ticket_ok and not already_pending and nt is not None and notify_on:
+        try:
+            nt.send_notice(nt.approval_notice(task_id, what, reason, tier, tool=tool,
+                                              command=command, paths=paths or None))
+        except Exception as e:  # noqa: BLE001 - thong bao khong duoc lam hong hang rao
+            print(f"[tier_guard] gui thong bao that bai: {e}", file=sys.stderr)
 
     print(
         f"CHAN BOI TIER GUARD.\n"

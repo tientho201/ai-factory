@@ -31,12 +31,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import flow_core as fc  # noqa: E402
 
 try:
-    from notify import send as notify_send
+    import notify as nt
 except Exception:  # noqa: BLE001 - thong bao khong bao gio duoc lam vo workflow
+    nt = None  # type: ignore[assignment]
 
-    def notify_send(subject: str, body: str, **_: object) -> bool:  # type: ignore[misc]
-        print(f"[notify tat] {subject}", file=sys.stderr)
-        return False
+
+def _notice(build: str, *args: object, **kw: object) -> None:
+    """Dung va gui mot thong bao co cau truc. Khong bao gio lam vo workflow."""
+    if nt is None:
+        print(f"[notify tat] {build}", file=sys.stderr)
+        return
+    try:
+        nt.send_notice(getattr(nt, build)(*args, **kw))
+    except Exception as e:  # noqa: BLE001
+        print(f"[notify] loi: {e}", file=sys.stderr)
 
 
 GREEN, AMBER, RED, DIM, BOLD, OFF = "\033[32m", "\033[33m", "\033[31m", "\033[2m", "\033[1m", "\033[0m"
@@ -254,8 +262,9 @@ def cmd_ask(args: argparse.Namespace) -> int:
         pass  # khong co run dang chay (vd: viec roi rac) - van xin duyet duoc
     fc.request_approval(args.task_id, args.question, args.reason or "agent chu dong hoi",
                         tier=args.tier, details={"options": args.options or []})
-    _notify_approval({"id": args.task_id, "title": args.question, "tier": args.tier,
-                      "tier_reason": args.reason or "", "files": []})
+    if fc.load_config()["notify"].get("on_approval_needed"):
+        _notice("approval_notice", args.task_id, args.question, args.reason or "agent chủ động hỏi",
+                args.tier, question=True, options=args.options or [])
     print(json.dumps({"status": "asked", "task_id": args.task_id,
                       "next": f".flow/flow wait {args.task_id}"}, ensure_ascii=False))
     return 0
@@ -350,7 +359,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
         print(f"{RED}Cong may: truot{OFF}", file=sys.stderr)
         cfg = fc.load_config()
         if cfg["notify"].get("on_task_fail"):
-            _notify_fail(t or {"id": args.task_id, "title": args.task_id}, result)
+            _notice("fail_notice", t or {"id": args.task_id, "title": args.task_id}, result, stage="gate")
 
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("ok") else 1
@@ -397,10 +406,9 @@ def cmd_done(args: argparse.Namespace) -> int:
     auto_next = bool(nxt) and fc.auto_allows(nxt["tier"], cfg)
 
     if cfg["notify"].get("on_task_pass"):
-        notify_send(f"[AI Factory] Xong {args.task_id}: {t['title']}",
-                    _summary_body(data, highlight=args.task_id))
+        _notice("pass_notice", data, args.task_id, next_task=nxt, auto_next=auto_next)
     if not nxt and cfg["notify"].get("on_run_done"):
-        notify_send("[AI Factory] Xong toan bo run", _summary_body(data))
+        _notice("run_done_notice", data)
 
     print(json.dumps({
         "status": "done",
@@ -428,7 +436,7 @@ def cmd_fail(args: argparse.Namespace) -> int:
 
     cfg = fc.load_config()
     if cfg["notify"].get("on_task_fail"):
-        _notify_fail(t, {"reason": args.reason})
+        _notice("fail_notice", t, {"reason": args.reason}, stage="review")
 
     max_att = int(cfg["limits"]["max_fix_attempts"])
     print(json.dumps({
@@ -959,39 +967,12 @@ def cmd_event(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------- thong bao
 
 
-def _summary_body(data: dict, highlight: str | None = None) -> str:
-    lines = [f"Run: {data.get('run_id')}", ""]
-    for t in data["tasks"]:
-        mark = ">" if t["id"] == highlight else " "
-        lines.append(f"{mark} [{t['id']}] tier {t['tier']} - {t['status']} - {t['title']}")
-    return "\n".join(lines)
-
-
 def _notify_approval(t: dict) -> None:
     cfg = fc.load_config()
     if not cfg["notify"].get("on_approval_needed"):
         return
-    port = cfg["dashboard"]["port"]
-    notify_send(
-        f"[AI Factory] Can ban duyet: {t.get('title', '')[:60]}",
-        f"Task {t.get('id')} duoc xep Tier {t.get('tier')} nen dung lai cho ban.\n\n"
-        f"Viec: {t.get('title')}\n"
-        f"Ly do xep tier: {t.get('tier_reason', '')}\n"
-        f"File dong den: {', '.join(t.get('files') or []) or '(chua ro)'}\n\n"
-        f"Mo dashboard de duyet: http://127.0.0.1:{port}\n"
-        f"Hoac chay: .flow/flow approve {t.get('id')}\n",
-    )
-
-
-def _notify_fail(t: dict, result: dict) -> None:
-    failed = result.get("failed") or [result.get("reason", "khong ro")]
-    logs = (result.get("logs") or {})
-    detail = "\n\n".join(f"--- {k} ---\n{str(v)[:1500]}" for k, v in logs.items() if v)
-    notify_send(
-        f"[AI Factory] Truot: {t.get('title', t.get('id'))[:60]}",
-        f"Task {t.get('id')} khong qua duoc cong kiem tra.\n\n"
-        f"Truot o: {', '.join(map(str, failed))}\n\n{detail}\n",
-    )
+    _notice("approval_notice", t.get("id"), t.get("title", ""), t.get("tier_reason", ""),
+            t.get("tier", 2), paths=None)
 
 
 # ---------------------------------------------------------------- parser
