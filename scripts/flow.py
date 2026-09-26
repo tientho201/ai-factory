@@ -244,11 +244,14 @@ def cmd_claim(args: argparse.Namespace) -> int:
 
 def cmd_ask(args: argparse.Namespace) -> int:
     """Agent chu dong xin y kien ban giua chung."""
-    data = fc.load_tasks()
-    t = fc.find_task(data, args.task_id)
-    if t:
-        t["status"] = "awaiting_approval"
-        fc.save_tasks(data)
+    try:
+        data = fc.load_tasks()
+        t = fc.find_task(data, args.task_id)
+        if t:
+            t["status"] = "awaiting_approval"
+            fc.save_tasks(data)
+    except SystemExit:
+        pass  # khong co run dang chay (vd: viec roi rac) - van xin duyet duoc
     fc.request_approval(args.task_id, args.question, args.reason or "agent chu dong hoi",
                         tier=args.tier, details={"options": args.options or []})
     _notify_approval({"id": args.task_id, "title": args.question, "tier": args.tier,
@@ -752,7 +755,8 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     # gitignore: giu config, bo trang thai chay
     gi = target / ".gitignore"
-    want = [".flow/runs/", ".flow/queue/", ".flow/current.json", ".flow/flow", ".env.flow"]
+    want = [".flow/runs/", ".flow/queue/", ".flow/approvals_adhoc/", ".flow/current.json",
+             ".flow/flow", ".env.flow"]
     have = gi.read_text(encoding="utf-8") if gi.exists() else ""
     missing = [w for w in want if w not in have]
     if missing:
@@ -921,22 +925,28 @@ def cmd_auto(args: argparse.Namespace) -> int:
 
 def cmd_approve(args: argparse.Namespace) -> int:
     a = fc.decide_approval(args.task_id, "approved", args.note or "")
-    data = fc.load_tasks()
-    t = fc.find_task(data, args.task_id)
-    if t and t["status"] == "awaiting_approval":
-        t["status"] = "pending"
-        fc.save_tasks(data)
+    try:
+        data = fc.load_tasks()
+        t = fc.find_task(data, args.task_id)
+        if t and t["status"] == "awaiting_approval":
+            t["status"] = "pending"
+            fc.save_tasks(data)
+    except SystemExit:
+        pass  # khong co run dang chay - phieu roi rac van duyet duoc binh thuong
     print(json.dumps(a, ensure_ascii=False, indent=2))
     return 0
 
 
 def cmd_reject(args: argparse.Namespace) -> int:
     a = fc.decide_approval(args.task_id, "rejected", args.note or "")
-    data = fc.load_tasks()
-    t = fc.find_task(data, args.task_id)
-    if t:
-        t["status"] = "skipped"
-        fc.save_tasks(data)
+    try:
+        data = fc.load_tasks()
+        t = fc.find_task(data, args.task_id)
+        if t:
+            t["status"] = "skipped"
+            fc.save_tasks(data)
+    except SystemExit:
+        pass
     print(json.dumps(a, ensure_ascii=False, indent=2))
     return 0
 

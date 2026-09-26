@@ -55,6 +55,7 @@ FLOW = ROOT / ".flow"
 RUNS = FLOW / "runs"
 CONFIG_PATH = FLOW / "config.json"
 CURRENT_PATH = FLOW / "current.json"
+ADHOC_APPROVALS = FLOW / "approvals_adhoc"
 
 
 # --------------------------------------------------------------------------
@@ -325,7 +326,18 @@ def queue_drain() -> list[dict[str, Any]]:
 
 
 def approvals_dir(run_id: str | None = None) -> Path:
-    d = run_dir(run_id) / "approvals"
+    """Thu muc chua phieu duyet.
+
+    Neu dang trong mot run thi dung .flow/runs/<id>/approvals/ nhu binh
+    thuong. Neu KHONG co run nao dang chay (vd: mot lenh Tier 2 roi rac
+    ngoai quy trinh, nhu git push thu cong) thi rot ve mot thu muc chung
+    o cap du an (.flow/approvals_adhoc/) thay vi nem loi - hang rao tier
+    guard khong duoc phep phu thuoc vao viec co run hay khong.
+    """
+    try:
+        d = run_dir(run_id) / "approvals"
+    except SystemExit:
+        d = ADHOC_APPROVALS
     d.mkdir(parents=True, exist_ok=True)
     return d
 
