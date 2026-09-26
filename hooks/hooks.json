@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell",
+        "hooks": [
+          {"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/tier_guard.py\"", "timeout": 30}
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {"hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/log_agent.py\"", "async": true}]}
+    ],
+    "SubagentStop": [
+      {"hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/log_agent.py\"", "async": true}]}
+    ]
+  }
+}

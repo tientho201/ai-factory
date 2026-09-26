@@ -1,0 +1,138 @@
+{
+  "_comment": "Profile greenfield: nhanh. Chi chan nhung thu cham RA NGOAI repo.",
+  "auto_mode": {
+    "enabled": true,
+    "max_tier": 2,
+    "_comment": "Du an moi: tu chay het, ke ca migration. Hong thi vut."
+  },
+  "limits": {
+    "max_subagent_depth": 2,
+    "max_parallel_coders": 3,
+    "max_fix_attempts": 3,
+    "wait_window_seconds": 90,
+    "_comment": "max_fix_attempts: agent sua test fail qua so lan nay thi dung va bao nguoi. wait_window_seconds: moi lan cho duyet chi cho ngan the nay roi tra quyen ve, tranh bi harness giet."
+  },
+  "tier_rules": {
+    "2": {
+      "label": "Bat buoc ban duyet",
+      "paths": [
+        ".env",
+        ".env.*",
+        "**/.env",
+        "**/.env.*",
+        "**/secrets*",
+        "**/credentials*",
+        "**/*.pem",
+        "**/*.key",
+        "**/id_rsa*"
+      ],
+      "commands": [
+        "git push",
+        "git reset --hard",
+        "rm -rf",
+        "sudo",
+        "mkfs",
+        "dd if=",
+        "npm publish",
+        "pnpm publish",
+        "yarn publish",
+        "twine upload",
+        "cargo publish",
+        "docker push",
+        "kubectl",
+        "helm ",
+        "terraform apply",
+        "terraform destroy",
+        "aws ",
+        "gcloud ",
+        "az ",
+        "vercel deploy",
+        "fly deploy",
+        "heroku"
+      ],
+      "keywords": [
+        "drop table",
+        "truncate",
+        "delete from",
+        "alter table",
+        "api_key",
+        "api-key",
+        "secret_key",
+        "private_key",
+        "access_token"
+      ],
+      "_comment": "Greenfield chi chan thu cham ra ngoai repo. Migration va dependency tu chay."
+    },
+    "0": {
+      "label": "Tu chay, khong can bao",
+      "paths": [
+        "**/*.test.*",
+        "**/*.spec.*",
+        "**/tests/**",
+        "**/test/**",
+        "**/__tests__/**",
+        "**/*.md",
+        "docs/**",
+        "**/docs/**",
+        "README*",
+        "CHANGELOG*",
+        "**/*.css",
+        "**/*.scss",
+        "**/*.stories.*",
+        ".flow/**",
+        "**/.flow/**"
+      ],
+      "commands": [
+        "ls",
+        "cat",
+        "grep",
+        "rg ",
+        "find ",
+        "git status",
+        "git diff",
+        "git log",
+        "npm test",
+        "pnpm test",
+        "yarn test",
+        "pytest",
+        "go test",
+        "cargo test",
+        "npm run lint",
+        "pnpm lint",
+        "eslint",
+        "prettier",
+        "ruff",
+        "black",
+        "mypy",
+        "tsc"
+      ],
+      "keywords": []
+    }
+  },
+  "default_tier": 1,
+  "tier_labels": {
+    "0": "Tu chay, khong can bao",
+    "1": "Tu chay roi bao cao lai",
+    "2": "Bat buoc ban duyet truoc"
+  },
+  "gates": {
+    "_comment": "Cong kiem tra bang may. De trong mot muc de bo qua no. Chay theo thu tu.",
+    "install": "",
+    "lint": "auto",
+    "typecheck": "auto",
+    "test": "auto",
+    "build": ""
+  },
+  "notify": {
+    "on_task_pass": false,
+    "on_task_fail": true,
+    "on_approval_needed": true,
+    "on_run_done": true,
+    "_comment": "Cau hinh kenh gui qua bien moi truong, xem README."
+  },
+  "dashboard": {
+    "host": "127.0.0.1",
+    "port": 7788
+  },
+  "profile": "greenfield"
+}

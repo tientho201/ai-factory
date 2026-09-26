@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# KHONG commit trang thai cua du an nao vao repo plugin.
+# .flow/ duoc `flow init` tao ra trong TUNG du an, khong thuoc ve plugin.
+.flow/
+.env.flow

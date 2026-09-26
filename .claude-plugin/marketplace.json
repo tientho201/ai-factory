@@ -1,0 +1,11 @@
+{
+  "name": "ai-factory",
+  "owner": {"name": "ban"},
+  "plugins": [
+    {
+      "name": "ai-factory",
+      "source": "./",
+      "description": "Day chuyen phan cap agent cho Claude Code"
+    }
+  ]
+}
