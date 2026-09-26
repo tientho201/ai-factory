@@ -8,7 +8,7 @@
 
 set -uo pipefail
 
-SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && { pwd -W 2>/dev/null || pwd; })"
 LAB="$(mktemp -d)"
 trap 'rm -rf "$LAB"' EXIT
 

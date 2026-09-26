@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -312,9 +313,13 @@ def cmd_wait(args: argparse.Namespace) -> int:
 def cmd_gate(args: argparse.Namespace) -> int:
     """Chay cong kiem tra bang may. Day moi la cong that, khong phai y kien cua LLM."""
     script = fc.FLOW_HOME / "scripts" / "gate.sh"
+    # shutil.which, khong phai "bash" tran: tren Windows, CreateProcess uu tien
+    # C:\Windows\System32\bash.exe (WSL launcher stub) truoc ca PATH, nen "bash"
+    # tran se goi nham WSL thay vi Git Bash that.
+    bash = shutil.which("bash") or "bash"
     proc = subprocess.run(
-        ["bash", str(script)], capture_output=True, text=True, cwd=fc.ROOT,
-        env=dict(os.environ, FLOW_PROJECT_DIR=str(fc.ROOT)),
+        [bash, script.as_posix()], capture_output=True, text=True, cwd=fc.ROOT,
+        env=dict(os.environ, FLOW_PROJECT_DIR=fc.ROOT.as_posix()),
     )
     try:
         result = json.loads(proc.stdout.strip().splitlines()[-1])
