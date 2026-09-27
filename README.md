@@ -165,6 +165,7 @@ Ghi `handoff.md` — một trang chứa mọi thứ phiên sau cần: đang đ�
 .flow/flow usage              # token và chi phí
 .flow/flow note T3 "..."      # ghi nhận xét
 .flow/flow dashboard               # bảng điều khiển
+.flow/flow telegram                # bot Telegram: xem và duyệt từ xa
 bash scripts/selftest.sh                  # tự kiểm tra 52 điểm
 ```
 
@@ -179,6 +180,49 @@ Telegram: `FLOW_TELEGRAM_TOKEN` + `FLOW_TELEGRAM_CHAT_ID`. Slack/Discord: `FLOW_
 Mỗi kênh nhận bản trình bày riêng: Gmail là email HTML, Slack dùng Block Kit, Discord dùng embed có màu, Telegram là tin nhắn định dạng. Thông báo **cần duyệt** ghi đủ để bạn quyết định mà không phải mở máy: dự án, nhánh git, run, task, mức rủi ro, lệnh hoặc file bị chặn, lý do, mô tả task, file trong phạm vi, tiêu chí nghiệm thu, ý tưởng gốc, tiến độ, số phiếu đang chờ, và lệnh duyệt/từ chối. Thông báo **thất bại** kèm kết quả từng bước kiểm tra và đoạn cuối log. Chuỗi giống mật khẩu/token trong lệnh được che trước khi gửi, và cùng một phiếu chỉ báo một lần.
 
 Xem trước mà không gửi: `python3 scripts/notify.py --preview text|html|slack|discord|telegram`. Duyệt từ điện thoại qua tunnel thì đặt `FLOW_DASHBOARD_URL` để link trong thông báo trỏ đúng chỗ.
+
+## Xem và duyệt từ xa
+
+Không cần ngồi canh máy. Có hai cách, dùng riêng hoặc cùng lúc.
+
+### Bot Telegram — hỏi nhanh, bấm duyệt ngay trong Telegram
+
+Bot chạy trên máy của bạn và tự hỏi Telegram có tin mới không, nên **không mở cổng nào ra internet**.
+
+1. Nhắn [@BotFather](https://t.me/BotFather) → `/newbot` → lấy token, ghi vào `.env.flow` là `FLOW_TELEGRAM_TOKEN`.
+2. Chạy `.flow/flow telegram`, nhắn `/id` cho bot, chép số chat id vào `FLOW_TELEGRAM_CHAT_ID`.
+3. Chạy lại `.flow/flow telegram` và để nó chạy (một cửa sổ terminal riêng, hoặc chạy nền).
+
+| Lệnh | Cho biết |
+|---|---|
+| `/status` | run nào, tiến độ, task đang chạy, số phiếu chờ, hoạt động gần nhất |
+| `/pending` | từng việc đang chờ duyệt, đủ chi tiết, kèm nút **Duyệt / Từ chối** |
+| `/tasks` | danh sách task và trạng thái |
+| `/task T1` | mô tả, file, kiểm thử, kết luận verifier, ghi chú coder, nhận xét của bạn |
+| `/log 20` | các sự kiện gần nhất: agent nào làm gì, lúc nào |
+
+Khi bot đang chạy, tin nhắn "cần duyệt" gửi tới Telegram cũng kèm sẵn nút. Duyệt ở đây đi đúng đường như bấm trên dashboard, theo chế độ duyệt đang chọn.
+
+Bảo vệ:
+- Chỉ chat trong `FLOW_TELEGRAM_CHAT_ID` đọc được. Người lạ nhắn gì bot cũng im.
+- Chỉ bạn (chat riêng) được bấm duyệt. Dùng trong nhóm thì phải liệt kê user id được duyệt ở `FLOW_TELEGRAM_APPROVERS`.
+- Mỗi quyết định phải bấm xác nhận lần hai.
+- Nút gắn với dấu vân tay của đúng phiếu đó: nút cũ không thể duyệt nhầm một phiếu mới.
+- `FLOW_TELEGRAM_READONLY=1` để chỉ cho xem, tắt hẳn việc duyệt từ xa.
+
+Rủi ro nên biết: ai chiếm được tài khoản Telegram của bạn sẽ duyệt được việc Tier 2. Bật xác thực hai bước cho Telegram, hoặc dùng chế độ chỉ xem.
+
+Mỗi token chỉ chạy **một** bot. Nhiều dự án thì tạo mỗi dự án một bot.
+
+### Dashboard qua Tailscale — xem đầy đủ trên điện thoại
+
+Không sửa gì, không mở cổng ra internet: điện thoại và máy tính vào cùng một mạng riêng.
+
+1. Cài [Tailscale](https://tailscale.com/download) trên máy tính và điện thoại, đăng nhập cùng một tài khoản.
+2. Trên máy tính, để dashboard chạy (`.flow/flow dashboard --no-open`), rồi đưa cổng của nó ra mạng riêng bằng `tailscale serve` (xem `tailscale serve --help`; cổng mặc định 7788).
+3. Mở địa chỉ `https://<tên-máy>.<tailnet>.ts.net` mà lệnh trên in ra từ điện thoại. Đặt địa chỉ đó vào `FLOW_DASHBOARD_URL` để link trong email/Telegram mở thẳng tới đây.
+
+**Đừng dùng `tailscale funnel`** hay đổi `host` sang `0.0.0.0`: dashboard không có đăng nhập, ai vào được là bấm duyệt được.
 
 ## Giới hạn nên biết
 

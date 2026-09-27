@@ -7,6 +7,7 @@ doc/ghi tasks.json, ghi events.jsonl. Khong co state nao nam trong dau agent.
 from __future__ import annotations
 
 import fnmatch
+import hashlib
 import json
 import os
 import time
@@ -465,3 +466,39 @@ def pending_approvals(run_id: str | None = None) -> list[dict[str, Any]]:
         if not a.get("decision"):
             out.append(a)
     return out
+
+
+TELEGRAM_STATE = FLOW / "telegram_bot.json"
+
+
+def telegram_bot_alive(max_age_s: int = 180) -> bool:
+    """Bot Telegram dang chay cho du an nay khong (dua tren nhip tim no ghi)."""
+    try:
+        st = json.loads(TELEGRAM_STATE.read_text(encoding="utf-8"))
+        return time.time() - float(st.get("alive_at", 0)) < max_age_s
+    except (OSError, ValueError):
+        return False
+
+
+def approval_key(a: dict[str, Any]) -> str:
+    """Dau van tay cua MOT phieu cu the. Nut duyet tu xa mang khoa nay, nen
+    nut cu khong the duyet nham mot phieu moi cung task_id."""
+    raw = f"{a.get('task_id', '')}|{a.get('what', '')}|{a.get('requested_at', '')}"
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:10]
+
+
+def apply_decision(task_id: str, decision: str, note: str = "", *, source: str = "web") -> dict[str, Any]:
+    """Ap dung quyet dinh cua nguoi dung tu dashboard hoac tu xa, theo approve_mode."""
+    mode = load_config().get("approve_mode", "queue")
+    if mode != "direct":
+        queue_push("decision", {"task_id": task_id, "decision": decision, "note": note, "source": source})
+    a = decide_approval(task_id, decision, note)
+    try:
+        data = load_tasks()
+        t = find_task(data, task_id)
+        if t:
+            t["status"] = "pending" if decision == "approved" else "skipped"
+            save_tasks(data)
+    except SystemExit:
+        pass
+    return {"mode": mode, "approval": a}

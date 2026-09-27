@@ -773,26 +773,17 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"error": "Thiếu task_id hoặc decision"}, 400)
                 return
 
-            mode = cfg.get("approve_mode", "queue")
-            msg = ""
-
+            mode = fc.apply_decision(tid, dec, body.get("note", ""), source="web")["mode"]
             if mode == "direct":
-                # ghi thang phieu duyet: agent dang chay `flow wait` se thay ngay
-                fc.decide_approval(tid, dec, body.get("note", ""))
-                self._sync_task(tid, dec)
                 msg = "Đã ghi quyết định. Agent đang chờ sẽ thấy trong vài giây."
+            elif mode == "spawn" and dec == "approved":
+                msg = _spawn_claude(tid) if ALLOW_SPAWN else (
+                    "Chế độ tự mở phiên mới chưa bật. Khởi động lại máy chủ với --allow-spawn, "
+                    "hoặc quay lại khung chat gõ “tiếp”.")
+            elif mode == "queue":
+                msg = "Đã đưa vào hàng đợi. Quay lại khung chat gõ “tiếp” để Claude làm tiếp."
             else:
-                # hang doi: Claude doc o dau luot sau
-                fc.queue_push("decision", {"task_id": tid, "decision": dec,
-                                           "note": body.get("note", "")})
-                fc.decide_approval(tid, dec, body.get("note", ""))
-                self._sync_task(tid, dec)
-                msg = ("Đã đưa vào hàng đợi. Quay lại khung chat gõ “tiếp” để Claude làm tiếp."
-                       if mode == "queue" else "")
-                if mode == "spawn" and dec == "approved":
-                    msg = _spawn_claude(tid) if ALLOW_SPAWN else (
-                        "Chế độ tự mở phiên mới chưa bật. Khởi động lại máy chủ với --allow-spawn, "
-                        "hoặc quay lại khung chat gõ “tiếp”.")
+                msg = ""
 
             self._json({"ok": True, "message": msg})
 
@@ -833,16 +824,6 @@ class Handler(BaseHTTPRequestHandler):
 
         else:
             self._json({"error": "Không tìm thấy"}, 404)
-
-    def _sync_task(self, tid: str, dec: str) -> None:
-        try:
-            data = fc.load_tasks()
-            t = fc.find_task(data, tid)
-            if t:
-                t["status"] = "pending" if dec == "approved" else "skipped"
-                fc.save_tasks(data)
-        except SystemExit:
-            pass
 
 
 def _utf8_stdio() -> None:

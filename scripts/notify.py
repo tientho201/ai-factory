@@ -92,6 +92,8 @@ class Notice:
     actions: list[tuple[str, str]] = field(default_factory=list)
     link: str = ""
     footer: str = ""
+    # Nut bam Telegram: hang -> [(nhan, callback_data)]
+    buttons: list[list[tuple[str, str]]] = field(default_factory=list)
 
     @property
     def label(self) -> str:
@@ -390,11 +392,25 @@ def _send_telegram(n: Notice) -> bool:
     chat = os.environ.get("FLOW_TELEGRAM_CHAT_ID")
     if not (token and chat):
         return False
-    return _post_json(
-        f"https://api.telegram.org/bot{token}/sendMessage",
-        {"chat_id": chat, "text": render_telegram(n), "parse_mode": "HTML",
-         "disable_web_page_preview": True},
-    )
+    payload: dict[str, Any] = {"chat_id": chat, "text": render_telegram(n), "parse_mode": "HTML",
+                               "disable_web_page_preview": True}
+    if n.buttons:
+        payload["reply_markup"] = {"inline_keyboard": [
+            [{"text": label, "callback_data": data} for label, data in row] for row in n.buttons]}
+    api = (os.environ.get("FLOW_TELEGRAM_API") or "https://api.telegram.org").rstrip("/")
+    return _post_json(f"{api}/bot{token}/sendMessage", payload)
+
+
+def approval_buttons(a: dict[str, Any], *, confirm: str | None = None) -> list[list[tuple[str, str]]]:
+    """Nut Duyet/Tu choi gan voi DUNG phieu nay. confirm='a'|'r' -> nut xac nhan buoc 2."""
+    key, tid = _fc().approval_key(a), a.get("task_id", "")
+    if len(f"ac:{key}:{tid}".encode("utf-8")) > 64:  # gioi han callback_data cua Telegram
+        return []
+    if confirm == "a":
+        return [[("Chắc chắn DUYỆT", f"ac:{key}:{tid}"), ("Huỷ", f"x:{key}:{tid}")]]
+    if confirm == "r":
+        return [[("Chắc chắn TỪ CHỐI", f"rc:{key}:{tid}"), ("Huỷ", f"x:{key}:{tid}")]]
+    return [[("Duyệt", f"a:{key}:{tid}"), ("Từ chối", f"r:{key}:{tid}")]]
 
 
 def send_notice(n: Notice, *, channels: list[str] | None = None) -> bool:
@@ -532,7 +548,7 @@ def _task_sections(t: dict | None) -> list[tuple[str, str, bool]]:
 def approval_notice(task_id: str, what: str, reason: str, tier: int = 2, *,
                     tool: str | None = None, command: str | None = None,
                     paths: list[str] | None = None, question: bool = False,
-                    options: list[str] | None = None) -> Notice:
+                    options: list[str] | None = None, requested_at: str | None = None) -> Notice:
     ctx = _context(task_id)
     cfg, t = ctx["cfg"], ctx["task"]
     tier_lbl = TIER_VI.get(tier, "")
@@ -543,7 +559,7 @@ def approval_notice(task_id: str, what: str, reason: str, tier: int = 2, *,
         ("Mức rủi ro", f"Tier {tier}" + (f" · {tier_lbl}" if tier_lbl else "")),
         ("Nguồn", "Agent chủ động hỏi" if question else
          (f"Hàng rào tier chặn công cụ {tool}" if tool else "Task cần duyệt trước khi chạy")),
-        ("Yêu cầu lúc", _now_local()),
+        ("Yêu cầu lúc", requested_at.replace("T", " ")[:19] if requested_at else _now_local()),
         ("Chế độ tự động", f"bật đến Tier {auto.get('max_tier')}" if auto.get("enabled") else "tắt"),
         ("Phiếu đang chờ", f"{max(ctx['pending'], 1)} phiếu"),
     ]
@@ -574,6 +590,16 @@ def approval_notice(task_id: str, what: str, reason: str, tier: int = 2, *,
     if after:
         actions.append(("Sau đó", after))
 
+    buttons: list[list[tuple[str, str]]] = []
+    try:
+        fc = _fc()
+        if fc.is_initialised() and fc.telegram_bot_alive():
+            a = fc.read_approval(task_id)
+            if a and a.get("decision") is None and a.get("what") == what:
+                buttons = approval_buttons(a)
+    except (Exception, SystemExit):  # noqa: BLE001
+        buttons = []
+
     title = t["title"] if t and not question and not command and not paths else what
     return Notice(
         kind="approval",
@@ -585,6 +611,7 @@ def approval_notice(task_id: str, what: str, reason: str, tier: int = 2, *,
         fields=fields, sections=sections, actions=actions, link=ctx["dashboard"],
         footer="Duyệt chỉ có hiệu lực cho đúng hành động này. Hành động khác sẽ phải xin duyệt lại. "
                "Chuỗi giống mật khẩu/token trong lệnh đã được che.",
+        buttons=buttons,
     )
 
 

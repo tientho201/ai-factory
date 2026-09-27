@@ -764,7 +764,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     # gitignore: giu config, bo trang thai chay
     gi = target / ".gitignore"
     want = [".flow/runs/", ".flow/queue/", ".flow/approvals_adhoc/", ".flow/current.json",
-             ".flow/flow", ".env.flow"]
+             ".flow/telegram_bot.json", ".flow/flow", ".env.flow"]
     have = gi.read_text(encoding="utf-8") if gi.exists() else ""
     missing = [w for w in want if w not in have]
     if missing:
@@ -795,6 +795,13 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
         cmd.append("--allow-spawn")
     if args.no_open:
         cmd.append("--no-open")
+    env = dict(os.environ, FLOW_PROJECT_DIR=str(fc.ROOT))
+    return subprocess.call(cmd, cwd=fc.ROOT, env=env)
+
+
+def cmd_telegram(args: argparse.Namespace) -> int:
+    """Chay bot Telegram de xem va duyet tu xa."""
+    cmd = [sys.executable, str(fc.FLOW_HOME / "scripts" / "telegram_bot.py")]
     env = dict(os.environ, FLOW_PROJECT_DIR=str(fc.ROOT))
     return subprocess.call(cmd, cwd=fc.ROOT, env=env)
 
@@ -1042,6 +1049,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--allow-spawn", action="store_true", dest="allow_spawn")
     s.add_argument("--no-open", action="store_true", dest="no_open")
     s.set_defaults(func=cmd_dashboard)
+
+    s = sub.add_parser("telegram", help="Chay bot Telegram: xem tinh hinh va duyet tu xa")
+    s.set_defaults(func=cmd_telegram)
 
     s = sub.add_parser("inbox", help="Doc hang doi quyet dinh tu web. Chay dau moi luot.")
     s.set_defaults(func=cmd_inbox)
