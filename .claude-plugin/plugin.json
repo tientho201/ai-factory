@@ -1,6 +1,6 @@
 {
   "name": "ai-factory",
-  "version": "2.0.0",
-  "description": "Day chuyen phan cap agent: chon tuyen theo rui ro, chan cung nhung viec can nguoi duyet, ban giao qua file, bang dieu khien web.",
+  "version": "2.1.0",
+  "description": "Dây chuyền phân cấp agent: chọn tuyến theo rủi ro, chan cung những việc cần người duyệt, bàn giao qua file, bảng điều khiển qua web.",
   "license": "MIT"
 }
